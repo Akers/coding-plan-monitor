@@ -6,6 +6,7 @@
       opacity: configStore.config.panelOpacity,
     }"
     @mousedown="onDragStart"
+    @contextmenu.prevent="onContextMenu"
   >
     <!-- 供应商标签栏 -->
     <ProviderTabs
@@ -53,19 +54,30 @@
     <PanelFooter
       :refresh-time-text="usageStore.timeSinceLastRefresh"
       :locked="configStore.config.panelLocked"
-      :can-minimize="isSnapped"
+      :can-minimize="snapped"
       @minimize="onMinimize"
       @toggle-lock="onToggleLock"
       @open-config="onOpenConfig"
     />
+
+    <!-- 右键菜单 -->
+    <div
+      v-if="contextMenuVisible"
+      class="context-menu"
+      :style="{ left: contextMenuPos.x + 'px', top: contextMenuPos.y + 'px' }"
+    >
+      <div class="context-menu-item" @click="onManualRefresh">刷新</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useUsageStore } from '@/stores/usage'
 import { invoke } from '@tauri-apps/api/core'
+import { listen } from '@tauri-apps/api/event'
+import { startDrag, snapPanelToEdge, isNearEdge, getPanelPosition, getScreenSize } from '@/services/panel'
 import ProviderTabs from '@/components/panel/ProviderTabs.vue'
 import UsageBar from '@/components/panel/UsageBar.vue'
 import PanelFooter from '@/components/panel/PanelFooter.vue'
@@ -102,10 +114,13 @@ const currentError = computed(() => {
 })
 
 /** 是否已吸附到边缘 */
-const isSnapped = computed(() => {
-  // TODO: 通过 panel service 获取实际吸附状态
-  return false
-})
+const snapped = ref(false)
+
+/** 右键菜单可见性 */
+const contextMenuVisible = ref(false)
+
+/** 右键菜单位置 */
+const contextMenuPos = ref({ x: 0, y: 0 })
 
 // ============================================================
 // Actions
@@ -114,16 +129,20 @@ const isSnapped = computed(() => {
 /** 拖拽开始 */
 function onDragStart(e: MouseEvent) {
   if (configStore.config.panelLocked || configStore.config.clickThrough) return
-  // 调用 Tauri 窗口拖拽 API
-  invoke('start_drag').catch(() => {
-    // 拖拽失败静默处理
-  })
+  startDrag()
+  // 拖拽结束后检测吸附状态
+  document.addEventListener('mouseup', onDragEnd, { once: true })
+}
+
+/** 拖拽结束后检测吸附状态 */
+function onDragEnd() {
+  checkSnapStatus()
 }
 
 /** 最小化面板 */
 async function onMinimize() {
   try {
-    await invoke('snap_panel_to_edge', { edge: configStore.config.panelEdge })
+    await snapPanelToEdge(320, 200, 20)
   } catch {
     // 静默处理
   }
@@ -145,9 +164,36 @@ function onReauth() {
   // TODO: 阶段 11 实现 OAuth 流程
 }
 
+/** 显示右键菜单 */
+function onContextMenu(e: MouseEvent) {
+  contextMenuPos.value = { x: e.clientX, y: e.clientY }
+  contextMenuVisible.value = true
+}
+
+/** 手动刷新 */
+function onManualRefresh() {
+  contextMenuVisible.value = false
+  location.reload()
+}
+
+/** 检测面板吸附状态 */
+async function checkSnapStatus() {
+  try {
+    const pos = await getPanelPosition()
+    const screen = await getScreenSize()
+    const panelSize = { width: 320, height: 200 }
+    const near = isNearEdge(pos, screen, panelSize, 20)
+    snapped.value = near.nearLeft || near.nearRight || near.nearTop || near.nearBottom
+  } catch {
+    snapped.value = false
+  }
+}
+
 // ============================================================
 // 生命周期
 // ============================================================
+
+let unlistenConfigSaved: (() => void) | null = null
 
 onMounted(async () => {
   // 加载配置
@@ -158,6 +204,25 @@ onMounted(async () => {
     .filter((p) => p.enabled)
     .map((p) => p.providerId)
   usageStore.setEnabledProviders(enabled)
+
+  // 检测初始吸附状态
+  await checkSnapStatus()
+
+  // 监听配置保存事件，重新加载配置
+  unlistenConfigSaved = await listen('config-saved', () => {
+    configStore.loadConfig().then(() => {
+      const enabled = configStore.config.providers
+        .filter((p) => p.enabled)
+        .map((p) => p.providerId)
+      usageStore.setEnabledProviders(enabled)
+    })
+  })
+})
+
+onUnmounted(() => {
+  if (unlistenConfigSaved) {
+    unlistenConfigSaved()
+  }
 })
 </script>
 
@@ -193,5 +258,26 @@ onMounted(async () => {
   justify-content: center;
   font-size: 12px;
   color: #888;
+}
+
+.context-menu {
+  position: fixed;
+  background: rgba(40, 40, 40, 0.95);
+  border-radius: 4px;
+  padding: 4px 0;
+  min-width: 100px;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.context-menu-item {
+  padding: 6px 16px;
+  cursor: pointer;
+  font-size: 12px;
+  color: #eee;
+}
+
+.context-menu-item:hover {
+  background: rgba(255,255,255,0.1);
 }
 </style>

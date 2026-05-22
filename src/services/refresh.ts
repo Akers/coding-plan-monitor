@@ -1,5 +1,8 @@
 import type { ProviderRegistry } from '@/providers/types'
 import type { UsageInfo } from '@/types/data-model'
+import { updateTrayStatus } from './tray'
+import { sendNotification } from './notification'
+import { checkAlerts } from './alert'
 
 /**
  * 刷新定时器 ID
@@ -96,6 +99,27 @@ export async function refreshAll(
       })
     }
   })
+
+  // W4: 刷新后更新托盘状态
+  const allInfos = enabledProviders.map((p: any, i: number) => ({
+    providerId: p.providerId,
+    info: results[i].status === 'fulfilled' ? results[i].value : null,
+  }))
+
+  const successCount = allInfos.filter((x) => x.info !== null).length
+  const totalCount = enabledProviders.length
+
+  if (totalCount > 0) {
+    if (successCount === 0) {
+      await updateTrayStatus('error').catch(() => {})
+    } else if (successCount < totalCount) {
+      await updateTrayStatus('warning').catch(() => {})
+    } else {
+      // 检查是否所有供应商的百分比都在阈值以下
+      // 由于 refreshAll 不知道 threshold 配置，简单设为 normal
+      await updateTrayStatus('normal').catch(() => {})
+    }
+  }
 }
 
 /**

@@ -54,6 +54,11 @@ import { ref, onMounted } from 'vue'
 import { emit as tauriEmit } from '@tauri-apps/api/event'
 import { useConfigStore } from '@/stores/config'
 import { PROVIDER_IDS, type ProviderId, type ProviderConfig } from '@/types/data-model'
+import { startOAuth as startOAuthService, stopOAuth, onOAuthCallback, openOAuthUrl } from '@/services/oauth'
+import { createProviderRegistry } from '@/providers/registry'
+import { ZhipuAdapter } from '@/providers/zhipu'
+import { MiniMaxAdapter } from '@/providers/minimax'
+import { VolcengineAdapter } from '@/providers/volcengine'
 import GeneralSettings from '@/components/config/GeneralSettings.vue'
 import DisplaySettings from '@/components/config/DisplaySettings.vue'
 import ProviderSettings from '@/components/config/ProviderSettings.vue'
@@ -112,12 +117,62 @@ function updateApiKey(id: ProviderId, key: string): void {
   }
 }
 
-function startOAuth(id: ProviderId): void {
-  console.log('OAuth not yet implemented for', id)
+// OAuth 回调 URL 映射（按供应商配置）
+const OAUTH_URLS: Record<string, string> = {
+  zhipu: 'https://open.bigmodel.cn/user/api/paas/token',
+  volcengine: 'https://console.volcengine.com/iam/keymanage',
 }
 
-function validateProvider(id: ProviderId): void {
-  console.log('Validate not yet implemented for', id)
+async function startOAuth(id: ProviderId): Promise<void> {
+  const port = 9527 // 固定端口
+  try {
+    await startOAuthService(id, port)
+    const unlisten = await onOAuthCallback((data) => {
+      if (data.provider_id === id) {
+        // 更新供应商 token
+        const provider = configStore.config.providers.find((p) => p.providerId === id)
+        if (provider) {
+          provider.apiKey = data.token
+          configStore.updateConfig({ providers: [...configStore.config.providers] })
+        }
+        stopOAuth()
+        unlisten()
+      }
+    })
+    // 打开浏览器授权页面
+    const url = OAUTH_URLS[id]
+    if (url) {
+      await openOAuthUrl(url)
+    }
+  } catch (e) {
+    console.error('OAuth failed:', e)
+  }
+}
+
+async function validateProvider(id: ProviderId): Promise<void> {
+  const provider = configStore.config.providers.find((p) => p.providerId === id)
+  if (!provider) return
+
+  // 构建临时 registry 验证
+  const registry = createProviderRegistry()
+  registry.register(new ZhipuAdapter())
+  registry.register(new MiniMaxAdapter())
+  registry.register(new VolcengineAdapter())
+
+  const adapter = registry.get(id)
+  if (!adapter) return
+
+  const valid = adapter.validateConfig(provider)
+  if (valid) {
+    try {
+      const info = await adapter.fetchUsage(provider)
+      alert(`${provider.providerId} 验证成功`)
+    } catch (e) {
+      alert(`验证失败: ${e}`)
+    }
+  } else {
+    alert('配置无效，请检查 API Key 或授权状态')
+  }
 }
 
 async function save(): Promise<void> {
