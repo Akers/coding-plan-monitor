@@ -4,7 +4,7 @@ pub mod commands;
 use tauri::{
     menu::{MenuBuilder, MenuItemBuilder},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager,
+    Manager, WebviewWindowBuilder, WebviewUrl,
 };
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -46,7 +46,16 @@ pub fn run() {
                             let _ = window.show();
                             let _ = window.set_focus();
                         } else {
-                            let _ = app.emit("open-config", ());
+                            let _window = WebviewWindowBuilder::new(
+                                app,
+                                "config",
+                                WebviewUrl::App("/config".into()),
+                            )
+                            .title("配置 - Coding Plan Monitor")
+                            .inner_size(500.0, 600.0)
+                            .center()
+                            .build()
+                            .unwrap();
                         }
                     }
                     "quit" => {

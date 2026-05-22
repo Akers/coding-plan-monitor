@@ -1,4 +1,4 @@
-use tauri::{Emitter, Manager};
+use tauri::{Manager, WebviewWindowBuilder, WebviewUrl};
 
 /// 托盘状态：normal / warning / error
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,8 +29,16 @@ pub fn open_config_window(app: tauri::AppHandle) -> Result<(), String> {
         let _ = window.show();
         let _ = window.set_focus();
     } else {
-        // 如果配置窗口不存在，通过事件让前端处理
-        let _ = app.emit("open-config", ());
+        let _window = WebviewWindowBuilder::new(
+            &app,
+            "config",
+            WebviewUrl::App("/config".into()),
+        )
+        .title("配置 - Coding Plan Monitor")
+        .inner_size(500.0, 600.0)
+        .center()
+        .build()
+        .map_err(|e| e.to_string())?;
     }
     Ok(())
 }
