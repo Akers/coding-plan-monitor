@@ -109,7 +109,7 @@ describe('MiniMaxAdapter', () => {
       expect(imageWeekly!.percentage).toBe(50) // 50/100
     })
 
-    it('should send Bearer token in request header', async () => {
+    it('should send correct API URL and request headers', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -119,10 +119,13 @@ describe('MiniMaxAdapter', () => {
       await adapter.fetchUsage(validConfig)
 
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.any(String),
+        'https://www.minimaxi.com/v1/token_plan/remains',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer sk-test-api-key',
+            'Content-Type': 'application/json',
+            'User-Agent': 'coding-plan-monitor',
+            'Accept': '*/*',
           }),
         }),
       )

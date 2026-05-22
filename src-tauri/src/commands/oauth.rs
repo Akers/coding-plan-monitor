@@ -180,7 +180,8 @@ pub fn stop_oauth_server() -> Result<(), String> {
         server.shutdown = true;
         Ok(())
     } else {
-        Err("No OAuth server running".to_string())
+        // No server running is not an error - it's already stopped
+        Ok(())
     }
 }
 

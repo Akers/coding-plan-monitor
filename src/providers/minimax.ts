@@ -11,7 +11,7 @@ export class MiniMaxAdapter implements ProviderAdapter {
   name = 'MiniMax TokenPlan'
   authType = 'apikey' as const
 
-  private readonly apiUrl = 'https://api.minimax.chat/v1/token_plan'
+  private readonly apiUrl = 'https://www.minimaxi.com/v1/token_plan/remains'
 
   validateConfig(config: ProviderConfig): boolean {
     return !!config.apiKey && config.apiKey.length > 0
@@ -27,6 +27,8 @@ export class MiniMaxAdapter implements ProviderAdapter {
         headers: {
           Authorization: `Bearer ${config.apiKey}`,
           'Content-Type': 'application/json',
+          'User-Agent': 'coding-plan-monitor',
+          'Accept': '*/*',
         },
       })
 
