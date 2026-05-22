@@ -187,6 +187,7 @@ pub fn stop_oauth_server() -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    use super::stop_oauth_server;
     #[test]
     fn test_handle_oauth_callback_extracts_token_and_provider() {
         // This test validates the query parameter parsing logic
@@ -268,5 +269,17 @@ mod tests {
         let path = "/";
         let result = path.strip_prefix("/callback?");
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_stop_oauth_server_is_idempotent() {
+        // Verify that stop_oauth_server returns Ok when no server is running.
+        // This is the core fix for BUG-2: OAuth button not responding on first click.
+        //
+        // Note: This test relies on SERVER_STATE being None at test start.
+        // If other tests leave state dirty, this test may produce false positives.
+        // In CI, cargo test runs each test in the same process by default.
+        let result = stop_oauth_server();
+        assert!(result.is_ok(), "stop_oauth_server should return Ok(()) when no server is running, got {:?}", result);
     }
 }

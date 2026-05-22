@@ -144,6 +144,33 @@ describe('MiniMaxAdapter', () => {
       expect(result.metrics).toEqual([])
     })
 
+    it('should return error on HTTP 404 (the original bug)', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 404,
+        statusText: 'Not Found',
+      })
+
+      const result = await adapter.fetchUsage(validConfig)
+
+      expect(result.error).toContain('请求失败')
+      expect(result.error).toContain('404')
+      expect(result.metrics).toEqual([])
+    })
+
+    it('should return empty metrics when plan_info_list is empty', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({ data: { plan_info_list: [] } }),
+      })
+
+      const result = await adapter.fetchUsage(validConfig)
+
+      expect(result.error).toBeUndefined()
+      expect(result.metrics).toEqual([])
+    })
+
     it('should return error on network failure', async () => {
       mockFetch.mockRejectedValueOnce(new Error('Network error'))
 
