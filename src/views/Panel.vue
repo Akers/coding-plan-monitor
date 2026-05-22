@@ -223,6 +223,7 @@ onUnmounted(() => {
   if (unlistenConfigSaved) {
     unlistenConfigSaved()
   }
+  document.removeEventListener('mouseup', onDragEnd)
 })
 </script>
 

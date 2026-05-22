@@ -124,7 +124,7 @@ const OAUTH_URLS: Record<string, string> = {
 }
 
 async function startOAuth(id: ProviderId): Promise<void> {
-  const port = 9527 // 固定端口
+  const port = configStore.config.oauthPort || 9527
   try {
     await startOAuthService(id, port)
     const unlisten = await onOAuthCallback((data) => {
@@ -132,7 +132,8 @@ async function startOAuth(id: ProviderId): Promise<void> {
         // 更新供应商 token
         const provider = configStore.config.providers.find((p) => p.providerId === id)
         if (provider) {
-          provider.apiKey = data.token
+          provider.token = data.token
+          provider.tokenExpireAt = Date.now() + 3600 * 1000 // 1小时后过期
           configStore.updateConfig({ providers: [...configStore.config.providers] })
         }
         stopOAuth()

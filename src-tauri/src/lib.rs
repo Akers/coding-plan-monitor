@@ -37,7 +37,11 @@ pub fn run() {
 
             let _tray = TrayIconBuilder::with_id("main-tray")
                 .tooltip("Coding Plan Monitor")
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon({
+    app.default_window_icon()
+        .cloned()
+        .expect("Default window icon not found. Ensure icons/icon.png exists in src-tauri/")
+})
                 .menu(&menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id().as_ref() {
@@ -61,7 +65,7 @@ pub fn run() {
                             .inner_size(500.0, 600.0)
                             .center()
                             .build()
-                            .unwrap();
+                            .expect("Failed to create config window");
                         }
                     }
                     "quit" => {

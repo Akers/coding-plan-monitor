@@ -46,7 +46,7 @@ export class MiniMaxAdapter implements ProviderAdapter {
     }
   }
 
-  private parseResponse(data: any): UsageInfo {
+  private parseResponse(data: { data?: { plan_info_list?: Array<{ model_name?: string; five_hours_total?: number; five_hours_remaining?: number; weekly_total?: number; weekly_remaining?: number }> } }): UsageInfo {
     const planList = data?.data?.plan_info_list
     if (!Array.isArray(planList)) {
       return this.errorResult('API 响应格式异常')
@@ -56,10 +56,10 @@ export class MiniMaxAdapter implements ProviderAdapter {
 
     // Separate text and image models
     const textPlans = planList.filter(
-      (p: any) => p.model_name?.startsWith('MiniMax-M'),
+      (p) => p.model_name?.startsWith('MiniMax-M'),
     )
     const imagePlans = planList.filter(
-      (p: any) => p.model_name === 'coding-plan-vlm',
+      (p) => p.model_name === 'coding-plan-vlm',
     )
 
     // Use first text plan for text metrics

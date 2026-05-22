@@ -1,6 +1,8 @@
 use std::fs;
 use std::path::PathBuf;
 
+use tauri::Emitter;
+
 use crate::models::AppConfig;
 
 /// 获取配置文件目录路径
@@ -45,8 +47,23 @@ pub fn load_config() -> Result<AppConfig, String> {
 
 /// 保存配置到文件
 #[tauri::command]
-pub fn save_config(config: AppConfig) -> Result<(), String> {
-    save_config_to_file(&config)
+pub fn save_config(app_handle: tauri::AppHandle, config: AppConfig) -> Result<(), String> {
+    save_config_to_file(&config)?;
+
+    // TODO(v2): 使用 tauri-plugin-stronghold 或 OS keyring 加密存储 API Key
+    // 当前方案仅设置文件权限为 600，防止同机其他用户读取
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let perms = std::fs::Permissions::from_mode(0o600);
+        fs::set_permissions(config_file_path(), perms)
+            .map_err(|e| format!("设置文件权限失败: {}", e))?;
+    }
+
+    // 通知前端配置已保存
+    let _ = app_handle.emit("config-saved", ());
+
+    Ok(())
 }
 
 /// 内部函数：保存配置到文件

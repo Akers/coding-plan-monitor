@@ -118,6 +118,8 @@ export interface AppConfig {
   alertThreshold: number
   /** 是否开机自启动 */
   autoStart: boolean
+  /** OAuth 回调端口，默认 9527 */
+  oauthPort?: number
   /** 供应商配置列表 */
   providers: ProviderConfig[]
 }

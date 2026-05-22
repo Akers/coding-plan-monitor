@@ -1,13 +1,13 @@
-import type { ProviderRegistry } from '@/providers/types'
-import type { UsageInfo } from '@/types/data-model'
+import type { ProviderRegistry, ProviderAdapter } from '@/providers/types'
+import type { AppConfig, ProviderConfig, UsageInfo } from '@/types/data-model'
 import { updateTrayStatus } from './tray'
 import { sendNotification } from './notification'
-import { checkAlerts } from './alert'
+import { checkAlerts, resetAlertCycle } from './alert'
 
 /**
  * 刷新定时器 ID
  */
-let refreshTimer: ReturnType<typeof setInterval> | null = null
+let refreshTimer: ReturnType<typeof setTimeout> | null = null
 
 /**
  * 启动定时刷新调度器
@@ -17,22 +17,27 @@ let refreshTimer: ReturnType<typeof setInterval> | null = null
  */
 export function startRefreshScheduler(
   registry: ProviderRegistry,
-  configStore: { config: { refreshInterval: number; providers: any[] } },
-  usageStore: { setEnabledProviders(ids: any): void; updateUsage(info: UsageInfo): void }
+  configStore: { config: AppConfig },
+  usageStore: { setEnabledProviders(ids: string[]): void; updateUsage(info: UsageInfo): void }
 ): void {
   // 立即刷新一次
   refreshAll(registry, configStore, usageStore)
 
   // 如果已有定时器，先清除
   if (refreshTimer !== null) {
-    clearInterval(refreshTimer)
+    clearTimeout(refreshTimer)
   }
 
-  // 启动新的定时器
   const intervalMs = configStore.config.refreshInterval * 1000
-  refreshTimer = setInterval(() => {
-    refreshAll(registry, configStore, usageStore)
-  }, intervalMs)
+  if (intervalMs <= 0) return
+
+  function scheduleNext(): void {
+    refreshTimer = setTimeout(async () => {
+      await refreshAll(registry, configStore, usageStore)
+      scheduleNext()
+    }, intervalMs)
+  }
+  scheduleNext()
 }
 
 /**
@@ -40,7 +45,7 @@ export function startRefreshScheduler(
  */
 export function stopRefreshScheduler(): void {
   if (refreshTimer !== null) {
-    clearInterval(refreshTimer)
+    clearTimeout(refreshTimer)
     refreshTimer = null
   }
 }
@@ -53,21 +58,21 @@ export function stopRefreshScheduler(): void {
  */
 export async function refreshAll(
   registry: ProviderRegistry,
-  configStore: { config: { providers: any[] } },
-  usageStore: { setEnabledProviders(ids: any): void; updateUsage(info: UsageInfo): void }
+  configStore: { config: AppConfig },
+  usageStore: { setEnabledProviders(ids: string[]): void; updateUsage(info: UsageInfo): void }
 ): Promise<void> {
   const providers = configStore.config.providers
 
   // 获取所有启用的供应商配置
-  const enabledProviders = providers.filter((p: any) => p.enabled)
+  const enabledProviders = providers.filter((p: ProviderConfig) => p.enabled)
 
   // 更新启用供应商列表
-  const enabledIds = enabledProviders.map((p: any) => p.providerId)
+  const enabledIds = enabledProviders.map((p: ProviderConfig) => p.providerId)
   usageStore.setEnabledProviders(enabledIds)
 
   // 并发调用所有启用供应商的 fetchUsage
-  const results = await Promise.allSettled(
-    enabledProviders.map(async (providerConfig: any) => {
+  const results = await Promise.allSettled<void>(
+    enabledProviders.map(async (providerConfig: ProviderConfig) => {
       const adapter = registry.get(providerConfig.providerId)
       if (!adapter) {
         throw new Error(`Provider adapter not found: ${providerConfig.providerId}`)
@@ -79,7 +84,7 @@ export async function refreshAll(
       }
 
       const info = await adapter.fetchUsage(providerConfig)
-      return info
+      usageStore.updateUsage(info)
     })
   )
 
@@ -87,9 +92,7 @@ export async function refreshAll(
   results.forEach((result, index) => {
     const providerConfig = enabledProviders[index]
 
-    if (result.status === 'fulfilled') {
-      usageStore.updateUsage(result.value)
-    } else {
+    if (result.status === 'rejected') {
       // 单个供应商失败不影响其他，传入带 error 的 UsageInfo
       usageStore.updateUsage({
         providerId: providerConfig.providerId,
@@ -98,12 +101,13 @@ export async function refreshAll(
         error: result.reason?.message || String(result.reason),
       })
     }
+    // fulfilled 的情况已经在 Promise.allSettled 中通过 usageStore.updateUsage(info) 处理了
   })
 
   // W4: 刷新后更新托盘状态
-  const allInfos = enabledProviders.map((p: any, i: number) => ({
+  const allInfos = enabledProviders.map((p: ProviderConfig, i: number) => ({
     providerId: p.providerId,
-    info: results[i].status === 'fulfilled' ? results[i].value : null,
+    info: results[i].status === 'fulfilled' ? (registry.get(p.providerId) ? { metrics: [] } : null) : null,
   }))
 
   const successCount = allInfos.filter((x) => x.info !== null).length
@@ -120,6 +124,9 @@ export async function refreshAll(
       await updateTrayStatus('normal').catch(() => {})
     }
   }
+
+  // 重置通知周期，允许下一个刷新周期重新检测
+  resetAlertCycle()
 }
 
 /**
@@ -130,8 +137,8 @@ export async function refreshAll(
  */
 export function restartRefreshScheduler(
   registry: ProviderRegistry,
-  configStore: { config: { refreshInterval: number; providers: any[] } },
-  usageStore: { setEnabledProviders(ids: any): void; updateUsage(info: UsageInfo): void }
+  configStore: { config: AppConfig },
+  usageStore: { setEnabledProviders(ids: string[]): void; updateUsage(info: UsageInfo): void }
 ): void {
   stopRefreshScheduler()
   startRefreshScheduler(registry, configStore, usageStore)

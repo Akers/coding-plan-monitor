@@ -100,9 +100,14 @@ pub struct AppConfig {
     pub alert_threshold: u32,
     /// 是否开机自启动
     pub auto_start: bool,
+    /// OAuth 回调端口，默认 9527
+    #[serde(default = "default_oauth_port")]
+    pub oauth_port: u16,
     /// 供应商配置列表
     pub providers: Vec<ProviderConfig>,
 }
+
+fn default_oauth_port() -> u16 { 9527 }
 
 impl Default for AppConfig {
     fn default() -> Self {
@@ -122,6 +127,7 @@ impl Default for AppConfig {
             alert_enabled: true,
             alert_threshold: 80,
             auto_start: false,
+            oauth_port: 9527,
             providers: vec![],
         }
     }

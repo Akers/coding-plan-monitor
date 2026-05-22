@@ -1,58 +1,17 @@
-import type { ProviderConfig, UsageInfo, UsageMetric } from '@/types/data-model'
-import type { ProviderAdapter } from './types'
+import type { UsageInfo, UsageMetric } from '@/types/data-model'
+import { BaseHtmlOAuthAdapter } from './base-html-oauth-adapter'
 
 /**
  * 智谱 CodingPlan 适配器
  * 通过页面解析获取5小时额度、周额度、MCP月额度和今日Token消耗
  * 使用 OAuth Token 认证
  */
-export class ZhipuAdapter implements ProviderAdapter {
-  id = 'zhipu' as const
-  name = '智谱 CodingPlan'
-  authType = 'oauth' as const
+export class ZhipuAdapter extends BaseHtmlOAuthAdapter {
+  get id() { return 'zhipu' as const }
+  get name() { return '智谱 CodingPlan' }
+  protected get pageUrl() { return 'https://open.bigmodel.cn/coding-plan/usage' }
 
-  private readonly pageUrl = 'https://open.bigmodel.cn/coding-plan/usage'
-
-  validateConfig(config: ProviderConfig): boolean {
-    if (!config.token) return false
-    if (config.tokenExpireAt && config.tokenExpireAt < Date.now()) return false
-    return true
-  }
-
-  async fetchUsage(config: ProviderConfig): Promise<UsageInfo> {
-    if (!config.token) {
-      return this.errorResult('Token 未配置，请先完成 OAuth 授权')
-    }
-
-    if (config.tokenExpireAt && config.tokenExpireAt < Date.now()) {
-      return this.errorResult('Token 已过期，请重新授权')
-    }
-
-    try {
-      const response = await fetch(this.pageUrl, {
-        headers: {
-          Authorization: `Bearer ${config.token}`,
-          'Content-Type': 'text/html',
-        },
-      })
-
-      if (!response.ok) {
-        if (response.status === 403) {
-          return this.errorResult('授权已失效，请重新授权')
-        }
-        return this.errorResult(`请求失败: HTTP ${response.status}`)
-      }
-
-      const html = await response.text()
-      return this.parseHtml(html)
-    } catch (err) {
-      return this.errorResult(
-        `网络错误: ${err instanceof Error ? err.message : String(err)}`,
-      )
-    }
-  }
-
-  private parseHtml(html: string): UsageInfo {
+  protected parseHtml(html: string): UsageInfo {
     const metrics: UsageMetric[] = []
 
     // Strip HTML tags for easier regex matching
@@ -115,31 +74,6 @@ export class ZhipuAdapter implements ProviderAdapter {
       providerId: 'zhipu',
       timestamp: Date.now(),
       metrics,
-    }
-  }
-
-  private createMetric(
-    label: string,
-    used: number,
-    total: number,
-    unit: string,
-  ): UsageMetric {
-    const percentage = total > 0 ? Math.round((used / total) * 100) : 0
-    return {
-      label,
-      usedQuota: used,
-      totalQuota: total,
-      percentage,
-      unit,
-    }
-  }
-
-  private errorResult(error: string): UsageInfo {
-    return {
-      providerId: 'zhipu',
-      timestamp: Date.now(),
-      metrics: [],
-      error,
     }
   }
 }

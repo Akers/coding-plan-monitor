@@ -1,3 +1,5 @@
+import type { AppConfig, ProviderConfig } from '@/types/data-model'
+
 /**
  * 轮播定时器 ID
  */
@@ -6,8 +8,8 @@ let carouselTimer: ReturnType<typeof setInterval> | null = null
 /**
  * 存储的 stores 引用（用于 resetCarousel）
  */
-let storedUsageStore: { nextProvider(): void; enabledProviders?: any[] } | null = null
-let storedConfigStore: { config: { carouselInterval: number; providers: any[] } } | null = null
+let storedUsageStore: { nextProvider(): void; enabledProviders?: string[] } | null = null
+let storedConfigStore: { config: AppConfig } | null = null
 
 /**
  * 启动供应商轮播
@@ -15,11 +17,11 @@ let storedConfigStore: { config: { carouselInterval: number; providers: any[] } 
  * @param configStore 配置存储
  */
 export function startCarousel(
-  usageStore: { nextProvider(): void; enabledProviders?: any[] },
-  configStore: { config: { carouselInterval: number; providers: any[] } }
+  usageStore: { nextProvider(): void; enabledProviders?: string[] },
+  configStore: { config: AppConfig }
 ): void {
   // 如果只有一个或没有启用供应商，不启动轮播
-  const enabledProviders = usageStore.enabledProviders || configStore.config.providers.filter((p: any) => p.enabled)
+  const enabledProviders = usageStore.enabledProviders || configStore.config.providers.filter((p: ProviderConfig) => p.enabled)
   if (enabledProviders.length <= 1) {
     return
   }
@@ -79,8 +81,8 @@ export function resetCarousel(): void {
  * @param configStore 配置存储
  */
 export function restartCarousel(
-  usageStore: { nextProvider(): void; enabledProviders?: any[] },
-  configStore: { config: { carouselInterval: number; providers: any[] } }
+  usageStore: { nextProvider(): void; enabledProviders?: string[] },
+  configStore: { config: AppConfig }
 ): void {
   stopCarousel()
   startCarousel(usageStore, configStore)
