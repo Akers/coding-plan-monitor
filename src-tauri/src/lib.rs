@@ -18,7 +18,13 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .target(tauri_plugin_log::Target::new(tauri_plugin_log::TargetKind::LogDir {
+                    file_name: None,
+                }))
+                .build(),
+        )
         .setup(|app| {
             // 创建系统托盘
             let show_panel = MenuItemBuilder::with_id("show_panel", "显示面板").build(app)?;
@@ -86,6 +92,8 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::autostart::set_auto_start,
+            commands::autostart::get_auto_start,
             commands::config::load_config,
             commands::config::save_config,
             commands::tray::toggle_panel,
