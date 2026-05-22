@@ -78,11 +78,12 @@ mod tests {
     impl TempConfigDir {
         fn new() -> Self {
             let temp_dir = std::env::temp_dir().join(format!(
-                "cpm-test-{}",
+                "cpm-test-{}-{:?}",
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .unwrap()
-                    .as_millis()
+                    .as_nanos(),
+                std::thread::current().id()
             ));
             fs::create_dir_all(&temp_dir).unwrap();
 
