@@ -82,6 +82,13 @@ pub fn run() {
             commands::tray::toggle_panel,
             commands::tray::open_config_window,
             commands::tray::update_tray_status,
+            commands::panel::set_click_through,
+            commands::panel::set_panel_always_on_top,
+            commands::panel::set_panel_position,
+            commands::panel::set_panel_size,
+            commands::panel::get_panel_position,
+            commands::panel::get_screen_size,
+            commands::panel::snap_panel_to_edge,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
