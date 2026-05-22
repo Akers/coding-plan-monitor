@@ -98,6 +98,8 @@ pub fn run() {
             commands::panel::get_panel_position,
             commands::panel::get_screen_size,
             commands::panel::snap_panel_to_edge,
+            commands::oauth::start_oauth_server,
+            commands::oauth::stop_oauth_server,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
