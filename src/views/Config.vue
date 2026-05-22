@@ -52,6 +52,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { emit as tauriEmit } from '@tauri-apps/api/event'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useConfigStore } from '@/stores/config'
 import { PROVIDER_IDS, type ProviderId, type ProviderConfig } from '@/types/data-model'
 import { startOAuth as startOAuthService, stopOAuth, onOAuthCallback, openOAuthUrl } from '@/services/oauth'
@@ -126,6 +127,8 @@ const OAUTH_URLS: Record<string, string> = {
 async function startOAuth(id: ProviderId): Promise<void> {
   const port = configStore.config.oauthPort || 9527
   try {
+    // 先停止旧的 OAuth 服务器，确保能重新启动
+    await stopOAuth()
     await startOAuthService(id, port)
     const unlisten = await onOAuthCallback((data) => {
       if (data.provider_id === id) {
@@ -179,10 +182,12 @@ async function validateProvider(id: ProviderId): Promise<void> {
 async function save(): Promise<void> {
   await configStore.saveConfig()
   await tauriEmit('config-saved', configStore.config)
+  await getCurrentWindow().close()
 }
 
-function cancel(): void {
+async function cancel(): Promise<void> {
   configStore.cancelChanges()
+  await getCurrentWindow().close()
 }
 </script>
 

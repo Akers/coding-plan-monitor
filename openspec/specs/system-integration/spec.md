@@ -5,23 +5,23 @@
 ## Requirements
 
 ### Requirement: 系统托盘图标与菜单
-系统 SHALL 在系统托盘区显示图标，提供双击事件和右键菜单。
+系统 SHALL 在系统托盘区仅显示一个图标，通过程序化方式创建并绑定事件，提供左键点击事件和右键菜单。
 
 #### Scenario: 系统托盘图标显示
 - **WHEN** 应用启动完成
-- **THEN** 系统 SHALL 在系统托盘区显示应用图标
+- **THEN** 系统 SHALL 在系统托盘区显示且仅显示一个应用图标
 
-#### Scenario: 双击托盘图标切换面板显示
-- **WHEN** 用户双击系统托盘图标
+#### Scenario: 左键点击托盘图标切换面板显示
+- **WHEN** 用户左键点击系统托盘图标
 - **THEN** 系统 SHALL 切换悬浮面板的显示/隐藏状态
 
 #### Scenario: 右键菜单操作
 - **WHEN** 用户右键点击系统托盘图标
-- **THEN** 系统 SHALL 显示包含"显示/隐藏面板"、"配置窗口"和"退出应用"的菜单
+- **THEN** 系统 SHALL 显示包含"显示面板"、"配置"和"退出"的菜单，且右键菜单 SHALL 能正常响应点击
 
 #### Scenario: 通过菜单退出应用
-- **WHEN** 用户点击托盘右键菜单中的"退出应用"
-- **THEN** 应用 SHALL 保存当前状态并完全退出
+- **WHEN** 用户点击托盘右键菜单中的"退出"
+- **THEN** 应用 SHALL 完全退出
 
 ### Requirement: 托盘图标状态指示
 托盘图标 SHALL 根据当前额度状态显示不同的视觉状态。
@@ -76,11 +76,11 @@
 - **THEN** 系统 SHALL 将当前配置写入 `~/.config/coding-plan-monitor/config.json`
 
 ### Requirement: OAuth 本地回调服务器
-系统 SHALL 支持在本地启动临时 HTTP 服务器接收 OAuth 授权回调。
+系统 SHALL 支持在本地启动临时 HTTP 服务器接收 OAuth 授权回调，并能在服务器仍运行时安全停止并重新启动。
 
 #### Scenario: 启动 OAuth 回调服务器
 - **WHEN** 供应商需要 OAuth 授权且用户触发登录
-- **THEN** Rust 侧 SHALL 在随机端口启动本地 HTTP 服务器，并打开外部浏览器访问授权页面
+- **THEN** Rust 侧 SHALL 先停止已有的 OAuth 服务器（如有），然后在本地端口启动新的 HTTP 服务器，并在系统默认浏览器中打开授权页面
 
 #### Scenario: 接收 OAuth 回调
 - **WHEN** 供应商 OAuth 重定向到 `http://localhost:<port>/callback`
@@ -89,6 +89,14 @@
 #### Scenario: OAuth 超时处理
 - **WHEN** OAuth 授权超过5分钟未完成
 - **THEN** 系统 SHALL 关闭 HTTP 服务器并通知 TS 侧授权超时
+
+#### Scenario: 浏览器打开授权页面
+- **WHEN** OAuth 服务器启动成功
+- **THEN** 系统 SHALL 使用系统默认浏览器打开授权 URL，不得打开 about:blank 页面
+
+#### Scenario: 重复触发 OAuth 登录
+- **WHEN** 用户在前一次 OAuth 流程未完成时再次点击登录授权
+- **THEN** 系统 SHALL 先停止旧服务器，再启动新服务器并重新打开浏览器
 
 ### Requirement: 日志记录
 系统 SHALL 将运行日志写入文件，用于问题排查。

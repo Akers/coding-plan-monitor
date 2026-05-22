@@ -78,6 +78,11 @@ import { useUsageStore } from '@/stores/usage'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { startDrag, snapPanelToEdge, isNearEdge, getPanelPosition, getScreenSize } from '@/services/panel'
+import { startRefreshScheduler, stopRefreshScheduler, restartRefreshScheduler } from '@/services/refresh'
+import { createProviderRegistry } from '@/providers/registry'
+import { ZhipuAdapter } from '@/providers/zhipu'
+import { MiniMaxAdapter } from '@/providers/minimax'
+import { VolcengineAdapter } from '@/providers/volcengine'
 import ProviderTabs from '@/components/panel/ProviderTabs.vue'
 import UsageBar from '@/components/panel/UsageBar.vue'
 import PanelFooter from '@/components/panel/PanelFooter.vue'
@@ -195,6 +200,9 @@ async function checkSnapStatus() {
 
 let unlistenConfigSaved: (() => void) | null = null
 
+/** 供应商注册表实例 */
+let registry: ReturnType<typeof createProviderRegistry> | null = null
+
 onMounted(async () => {
   // 加载配置
   await configStore.loadConfig()
@@ -205,16 +213,28 @@ onMounted(async () => {
     .map((p) => p.providerId)
   usageStore.setEnabledProviders(enabled)
 
+  // 初始化供应商注册表并启动刷新调度器
+  registry = createProviderRegistry()
+  registry.register(new ZhipuAdapter())
+  registry.register(new MiniMaxAdapter())
+  registry.register(new VolcengineAdapter())
+  startRefreshScheduler(registry, configStore, usageStore)
+
   // 检测初始吸附状态
   await checkSnapStatus()
 
-  // 监听配置保存事件，重新加载配置
+  // 监听配置保存事件，重新加载配置并重启刷新调度器
   unlistenConfigSaved = await listen('config-saved', () => {
     configStore.loadConfig().then(() => {
       const enabled = configStore.config.providers
         .filter((p) => p.enabled)
         .map((p) => p.providerId)
       usageStore.setEnabledProviders(enabled)
+
+      // 配置变更后重启刷新调度器
+      if (registry) {
+        restartRefreshScheduler(registry, configStore, usageStore)
+      }
     })
   })
 })
@@ -223,6 +243,8 @@ onUnmounted(() => {
   if (unlistenConfigSaved) {
     unlistenConfigSaved()
   }
+  // 停止刷新调度器
+  stopRefreshScheduler()
   document.removeEventListener('mouseup', onDragEnd)
 })
 </script>
@@ -231,6 +253,7 @@ onUnmounted(() => {
 .panel-container {
   width: 100%;
   height: 100%;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   border-radius: 6px;

@@ -1,6 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { open } from '@tauri-apps/plugin-shell'
 
 export async function startOAuth(providerId: string, port: number): Promise<void> {
   await invoke('start_oauth_server', { port })
@@ -20,5 +19,5 @@ export async function onOAuthCallback(
 }
 
 export async function openOAuthUrl(url: string): Promise<void> {
-  await open(url)
+  await invoke('open_url_in_browser', { url })
 }

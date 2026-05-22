@@ -112,6 +112,7 @@ pub fn run() {
             commands::panel::snap_panel_to_edge,
             commands::oauth::start_oauth_server,
             commands::oauth::stop_oauth_server,
+            commands::oauth::open_url_in_browser,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

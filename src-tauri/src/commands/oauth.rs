@@ -16,7 +16,18 @@ lazy_static::lazy_static! {
 pub fn start_oauth_server(port: u16, app_handle: AppHandle) -> Result<(), String> {
     let mut state = SERVER_STATE.lock().map_err(|e| e.to_string())?;
     if state.is_some() {
-        return Err("OAuth server already running".to_string());
+        // 先停止已有的服务器，再启动新的
+        if let Some(ref mut server) = *state {
+            server.shutdown = true;
+        }
+        // 等待旧线程退出（短暂的 sleep 确保端口释放）
+        drop(state);
+        std::thread::sleep(Duration::from_millis(200));
+        state = SERVER_STATE.lock().map_err(|e| e.to_string())?;
+        // 如果旧服务器仍然占用状态，强制清除
+        if state.is_some() {
+            *state = None;
+        }
     }
 
     *state = Some(OAuthServer { shutdown: false });
@@ -130,6 +141,36 @@ fn handle_oauth_callback(path: &str, app_handle: &AppHandle) {
             let _ = app_handle.emit("oauth-callback", payload);
         }
     }
+}
+
+/// 使用系统默认浏览器打开指定 URL
+#[tauri::command]
+pub fn open_url_in_browser(url: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/c", "start", &url])
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
