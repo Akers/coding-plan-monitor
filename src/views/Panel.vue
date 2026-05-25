@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="panelRef"
     class="panel-container"
     :style="{
       backgroundColor: configStore.config.panelBgColor,
@@ -72,12 +73,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useConfigStore } from '@/stores/config'
 import { useUsageStore } from '@/stores/usage'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { startDrag, snapPanelToEdge, isNearEdge, getPanelPosition, getScreenSize } from '@/services/panel'
+import { startDrag, snapPanelToEdge, isNearEdge, getPanelPosition, getScreenSize, setPanelSize } from '@/services/panel'
 import { startRefreshScheduler, stopRefreshScheduler, restartRefreshScheduler } from '@/services/refresh'
 import { createProviderRegistry } from '@/providers/registry'
 import { ZhipuAdapter } from '@/providers/zhipu'
@@ -98,6 +99,22 @@ const providerNames: Record<ProviderId, string> = {
   zhipu: '智谱',
   volcengine: '火山',
 }
+
+// ============================================================
+// Refs
+// ============================================================
+
+/** 面板容器 DOM 引用 */
+const panelRef = ref<HTMLElement | null>(null)
+
+/** 当前面板窗口高度（px） */
+const currentPanelHeight = ref(200)
+
+/** 最小面板高度 */
+const MIN_PANEL_HEIGHT = 200
+
+/** 最大面板高度 */
+const MAX_PANEL_HEIGHT = 500
 
 // ============================================================
 // Computed
@@ -131,6 +148,29 @@ const contextMenuPos = ref({ x: 0, y: 0 })
 // Actions
 // ============================================================
 
+/** 高度防抖定时器 */
+let heightDebounceTimer: ReturnType<typeof setTimeout> | null = null
+
+/** 根据内容实际高度调整窗口大小 */
+function updatePanelHeight() {
+  if (!panelRef.value) return
+  const el = panelRef.value
+  // scrollHeight 是内容实际高度
+  const contentHeight = el.scrollHeight
+  const newHeight = Math.min(MAX_PANEL_HEIGHT, Math.max(MIN_PANEL_HEIGHT, contentHeight))
+  // 仅当高度变化 ≥ 5px 时才调整
+  if (Math.abs(newHeight - currentPanelHeight.value) >= 5) {
+    currentPanelHeight.value = newHeight
+    setPanelSize(320, newHeight).catch(() => {})
+  }
+}
+
+/** 防抖版高度更新 */
+function debouncedUpdatePanelHeight() {
+  if (heightDebounceTimer) clearTimeout(heightDebounceTimer)
+  heightDebounceTimer = setTimeout(updatePanelHeight, 50)
+}
+
 /** 拖拽开始 */
 function onDragStart(_e: MouseEvent) {
   if (configStore.config.panelLocked || configStore.config.clickThrough) return
@@ -147,7 +187,7 @@ function onDragEnd() {
 /** 最小化面板 */
 async function onMinimize() {
   try {
-    await snapPanelToEdge(320, 200, 20)
+    await snapPanelToEdge(320, currentPanelHeight.value, 20)
   } catch {
     // 静默处理
   }
@@ -186,7 +226,7 @@ async function checkSnapStatus() {
   try {
     const pos = await getPanelPosition()
     const screen = await getScreenSize()
-    const panelSize = { width: 320, height: 200 }
+    const panelSize = { width: 320, height: currentPanelHeight.value }
     const near = isNearEdge(pos, screen, panelSize, 20)
     snapped.value = near.nearLeft || near.nearRight || near.nearTop || near.nearBottom
   } catch {
@@ -203,7 +243,17 @@ let unlistenConfigSaved: (() => void) | null = null
 /** 供应商注册表实例 */
 let registry: ReturnType<typeof createProviderRegistry> | null = null
 
+/** ResizeObserver 实例 */
+let resizeObserver: ResizeObserver | null = null
+
 onMounted(async () => {
+  // 初始化 ResizeObserver 监听面板内容高度变化
+  if (panelRef.value) {
+    resizeObserver = new ResizeObserver(() => {
+      debouncedUpdatePanelHeight()
+    })
+    resizeObserver.observe(panelRef.value)
+  }
   // 加载配置
   await configStore.loadConfig()
 
@@ -239,9 +289,21 @@ onMounted(async () => {
   })
 })
 
+// 监听内容变化时调整面板高度
+watch([currentMetrics, currentError, currentExtraInfo], () => {
+  nextTick(() => updatePanelHeight())
+})
+
 onUnmounted(() => {
   if (unlistenConfigSaved) {
     unlistenConfigSaved()
+  }
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+    resizeObserver = null
+  }
+  if (heightDebounceTimer) {
+    clearTimeout(heightDebounceTimer)
   }
   // 停止刷新调度器
   stopRefreshScheduler()
@@ -266,7 +328,6 @@ onUnmounted(() => {
 .metrics-list {
   flex: 1;
   padding: 4px 8px;
-  overflow-y: auto;
 }
 
 .extra-info {
