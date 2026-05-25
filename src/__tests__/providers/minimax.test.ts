@@ -93,6 +93,8 @@ describe('MiniMaxAdapter', () => {
       // Text weekly
       const textWeekly = result.metrics.find((m) => m.label === '文本周额度')
       expect(textWeekly).toBeDefined()
+      expect(textWeekly!.usedQuota).toBe(100)
+      expect(textWeekly!.totalQuota).toBe(500)
       expect(textWeekly!.percentage).toBe(20) // 100/500
 
       // Image 5h
@@ -103,6 +105,8 @@ describe('MiniMaxAdapter', () => {
       // Image weekly
       const imageWeekly = result.metrics.find((m) => m.label === '图像周额度')
       expect(imageWeekly).toBeDefined()
+      expect(imageWeekly!.usedQuota).toBe(50)
+      expect(imageWeekly!.totalQuota).toBe(100)
       expect(imageWeekly!.percentage).toBe(50) // 50/100
     })
 
@@ -181,7 +185,7 @@ describe('MiniMaxAdapter', () => {
       const result = await adapter.fetchUsage(validConfig)
 
       expect(result.error).toBeUndefined()
-      expect(result.metrics).toHaveLength(2)
+      expect(result.metrics).toHaveLength(4)
       expect(result.metrics).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
@@ -191,9 +195,21 @@ describe('MiniMaxAdapter', () => {
             percentage: 4,
           }),
           expect.objectContaining({
+            label: '文本周额度',
+            usedQuota: 0,
+            totalQuota: 0,
+            percentage: 0,
+          }),
+          expect.objectContaining({
             label: '图像 5h 额度',
             usedQuota: 0,
             totalQuota: 150,
+            percentage: 0,
+          }),
+          expect.objectContaining({
+            label: '图像周额度',
+            usedQuota: 0,
+            totalQuota: 0,
             percentage: 0,
           }),
         ]),
@@ -308,7 +324,7 @@ describe('MiniMaxAdapter', () => {
       expect(result.metrics).toEqual([])
     })
 
-    it('should skip weekly metric when weekly total is zero', async () => {
+    it('should include weekly metric when weekly total is zero', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
         status: 200,
@@ -329,9 +345,61 @@ describe('MiniMaxAdapter', () => {
       const result = await adapter.fetchUsage(validConfig)
 
       expect(result.error).toBeUndefined()
-      expect(result.metrics).toHaveLength(1)
-      expect(result.metrics[0].label).toBe('文本 5h 额度')
-      expect(result.metrics[0].percentage).toBe(10)
+      expect(result.metrics).toHaveLength(2)
+      expect(result.metrics).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: '文本 5h 额度',
+            usedQuota: 151,
+            totalQuota: 1500,
+            percentage: 10,
+          }),
+          expect.objectContaining({
+            label: '文本周额度',
+            usedQuota: 0,
+            totalQuota: 0,
+            percentage: 0,
+          }),
+        ]),
+      )
+    })
+
+    it('should include weekly metric with zero defaults when weekly fields are missing', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          model_remains: [
+            {
+              model_name: 'coding-plan-vlm',
+              current_interval_usage_count: 3,
+              current_interval_total_count: 12,
+            },
+          ],
+          base_resp: { status_code: 0, status_msg: 'success' },
+        }),
+      })
+
+      const result = await adapter.fetchUsage(validConfig)
+
+      expect(result.error).toBeUndefined()
+      expect(result.metrics).toHaveLength(2)
+      expect(result.metrics).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            label: '图像 5h 额度',
+            usedQuota: 3,
+            totalQuota: 12,
+            percentage: 25,
+          }),
+          expect.objectContaining({
+            label: '图像周额度',
+            usedQuota: 0,
+            totalQuota: 0,
+            percentage: 0,
+          }),
+        ]),
+      )
     })
 
     it('should return error on network failure', async () => {

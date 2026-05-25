@@ -22,7 +22,7 @@ describe('Logger Service', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     // Reset DEV to original value
-    vi.stubEnv('DEV', 'false')
+    vi.stubEnv('DEV', 'false' as any)
   })
 
   describe('logInfo', () => {
@@ -37,7 +37,7 @@ describe('Logger Service', () => {
     })
 
     it('should output to console in dev mode', async () => {
-      vi.stubEnv('DEV', 'true')
+      vi.stubEnv('DEV', 'true' as any)
       const consoleSpy = vi.spyOn(console, 'info')
 
       await logInfo('Dev info message')
@@ -58,7 +58,7 @@ describe('Logger Service', () => {
     })
 
     it('should output to console in dev mode', async () => {
-      vi.stubEnv('DEV', 'true')
+      vi.stubEnv('DEV', 'true' as any)
       const consoleSpy = vi.spyOn(console, 'warn')
 
       await logWarn('Dev warn message')
@@ -79,7 +79,7 @@ describe('Logger Service', () => {
     })
 
     it('should output to console in dev mode', async () => {
-      vi.stubEnv('DEV', 'true')
+      vi.stubEnv('DEV', 'true' as any)
       const consoleSpy = vi.spyOn(console, 'error')
 
       await logError('Dev error message')
@@ -100,7 +100,7 @@ describe('Logger Service', () => {
     })
 
     it('should output to console in dev mode', async () => {
-      vi.stubEnv('DEV', 'true')
+      vi.stubEnv('DEV', 'true' as any)
       const consoleSpy = vi.spyOn(console, 'debug')
 
       await logDebug('Dev debug message')

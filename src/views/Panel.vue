@@ -132,7 +132,7 @@ const contextMenuPos = ref({ x: 0, y: 0 })
 // ============================================================
 
 /** 拖拽开始 */
-function onDragStart(e: MouseEvent) {
+function onDragStart(_e: MouseEvent) {
   if (configStore.config.panelLocked || configStore.config.clickThrough) return
   startDrag()
   // 拖拽结束后检测吸附状态

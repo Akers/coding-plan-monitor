@@ -1,4 +1,4 @@
-import type { ProviderConfig, UsageInfo, UsageMetric } from '@/types/data-model'
+import type { ProviderId, ProviderConfig, UsageInfo, UsageMetric } from '@/types/data-model'
 import type { ProviderAdapter } from './types'
 
 /**
@@ -6,7 +6,7 @@ import type { ProviderAdapter } from './types'
  * 智谱、火山等使用相同页面解析模式的供应商可继承此类
  */
 export abstract class BaseHtmlOAuthAdapter implements ProviderAdapter {
-  abstract get id(): string
+  abstract get id(): ProviderId
   abstract get name(): string
   protected abstract get pageUrl(): string
   authType = 'oauth' as const

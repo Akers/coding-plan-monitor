@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ProviderRegistry, ProviderAdapter } from '@/providers/types'
-import type { ProviderId, ProviderConfig, UsageInfo } from '@/types/data-model'
+import type { ProviderId, UsageInfo } from '@/types/data-model'
 
 // Mock the modules before importing the service
 const mockFetchUsage = vi.fn()
@@ -145,12 +145,6 @@ describe('Refresh Service', () => {
       const configStore = createMockConfigStore()
       const usageStore = createMockUsageStore()
 
-      const errorInfo: UsageInfo = {
-        providerId: 'zhipu',
-        timestamp: Date.now(),
-        metrics: [],
-        error: 'API Error',
-      }
       const successInfo: UsageInfo = {
         providerId: 'minimax',
         timestamp: Date.now(),

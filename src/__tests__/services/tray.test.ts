@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock @tauri-apps/api/core
-const mockInvoke = vi.fn()
+const mockInvoke = vi.fn<( ...a: unknown[]) => unknown>(() => {})
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: unknown[]) => mockInvoke(...args),
 }))
 
 // Mock @tauri-apps/api/event
-const mockListen = vi.fn(() => Promise.resolve(() => {}))
+const mockListen = vi.fn<(...a: unknown[]) => unknown>(() => Promise.resolve(() => {}))
 vi.mock('@tauri-apps/api/event', () => ({
   listen: (...args: unknown[]) => mockListen(...args),
 }))

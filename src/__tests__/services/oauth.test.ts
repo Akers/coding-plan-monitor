@@ -62,7 +62,7 @@ describe('OAuth Service', () => {
 
     it('should call callback with payload when event is received', async () => {
       const callback = vi.fn()
-      mockListen.mockImplementation((eventName, handler) => {
+      mockListen.mockImplementation((_eventName, handler) => {
         // Simulate event being received
         setTimeout(() => {
           handler({ payload: { token: 'test-token-123', provider_id: 'zhipu' } })

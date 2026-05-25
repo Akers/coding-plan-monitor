@@ -168,7 +168,7 @@ describe('Carousel Service', () => {
       })
 
       // Mock enabledProviders to return only one provider
-      vi.spyOn(usageStore, 'setEnabledProviders').mockImplementation((ids: ProviderId[]) => {
+      vi.spyOn(usageStore, 'setEnabledProviders').mockImplementation((_ids: ProviderId[]) => {
         // Simulate single provider
       })
 

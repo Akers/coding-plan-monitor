@@ -118,16 +118,13 @@ export class MiniMaxAdapter implements ProviderAdapter {
       ),
     )
 
-    const weeklyTotal = plan.current_weekly_total_count ?? 0
-    if (weeklyTotal > 0) {
-      metrics.push(
-        this.createMetric(
-          `${labelPrefix}周额度`,
-          plan.current_weekly_usage_count ?? 0,
-          weeklyTotal,
-        ),
-      )
-    }
+    metrics.push(
+      this.createMetric(
+        `${labelPrefix}周额度`,
+        plan.current_weekly_usage_count ?? 0,
+        plan.current_weekly_total_count ?? 0,
+      ),
+    )
   }
 
   private createMetric(

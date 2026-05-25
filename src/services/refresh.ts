@@ -1,8 +1,7 @@
-import type { ProviderRegistry, ProviderAdapter } from '@/providers/types'
+import type { ProviderRegistry } from '@/providers/types'
 import type { AppConfig, ProviderConfig, UsageInfo } from '@/types/data-model'
 import { updateTrayStatus } from './tray'
-import { sendNotification } from './notification'
-import { checkAlerts, resetAlertCycle } from './alert'
+import { resetAlertCycle } from './alert'
 
 /**
  * 刷新定时器 ID

@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
-export async function startOAuth(providerId: string, port: number): Promise<void> {
+export async function startOAuth(_providerId: string, port: number): Promise<void> {
   await invoke('start_oauth_server', { port })
 }
 

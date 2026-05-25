@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useUsageStore } from '@/stores/usage'
-import type { UsageInfo, UsageMetric, ProviderId } from '@/types/data-model'
+import type { UsageInfo, UsageMetric } from '@/types/data-model'
 
 // Mock provider data
 const mockMetrics: UsageMetric[] = [
@@ -15,14 +15,7 @@ const mockUsageInfo: UsageInfo = {
   metrics: mockMetrics,
 }
 
-const mockUsageInfo2: UsageInfo = {
-  providerId: 'zhipu',
-  timestamp: Date.now(),
-  metrics: [
-    { label: '5h 额度', usedQuota: 80, totalQuota: 100, percentage: 80, unit: '次' },
-  ],
-  extraInfo: '今日消耗: 1200 tokens',
-}
+
 
 const mockErrorUsage: UsageInfo = {
   providerId: 'minimax',

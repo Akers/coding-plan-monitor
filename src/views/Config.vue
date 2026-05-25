@@ -54,7 +54,7 @@ import { ref, onMounted } from 'vue'
 import { emit as tauriEmit } from '@tauri-apps/api/event'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useConfigStore } from '@/stores/config'
-import { PROVIDER_IDS, type ProviderId, type ProviderConfig } from '@/types/data-model'
+import { PROVIDER_IDS, type ProviderId } from '@/types/data-model'
 import { startOAuth as startOAuthService, stopOAuth, onOAuthCallback, openOAuthUrl } from '@/services/oauth'
 import { createProviderRegistry } from '@/providers/registry'
 import { ZhipuAdapter } from '@/providers/zhipu'
@@ -169,7 +169,7 @@ async function validateProvider(id: ProviderId): Promise<void> {
   const valid = adapter.validateConfig(provider)
   if (valid) {
     try {
-      const info = await adapter.fetchUsage(provider)
+      await adapter.fetchUsage(provider)
       alert(`${provider.providerId} 验证成功`)
     } catch (e) {
       alert(`验证失败: ${e}`)

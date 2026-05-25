@@ -67,7 +67,7 @@ describe('集成测试 14.3: 供应商轮播 → 手动切换 → 维度展示',
     expect(usageStore.currentProvider).toBe('zhipu')
 
     // 启动轮播
-    startCarousel(usageStore, configStore)
+    startCarousel(usageStore, configStore as any)
 
     // 第一个间隔后切换到 minimax
     vi.advanceTimersByTime(10_000)
@@ -93,7 +93,7 @@ describe('集成测试 14.3: 供应商轮播 → 手动切换 → 维度展示',
     usageStore.updateUsage(zhipuUsage)
     usageStore.updateUsage(minimaxUsage)
 
-    startCarousel(usageStore, configStore)
+    startCarousel(usageStore, configStore as any)
 
     // 过了 7 秒（接近下一次切换）
     vi.advanceTimersByTime(7_000)
@@ -121,7 +121,7 @@ describe('集成测试 14.3: 供应商轮播 → 手动切换 → 维度展示',
     usageStore.setEnabledProviders(['zhipu'])
     usageStore.updateUsage(zhipuUsage)
 
-    startCarousel(usageStore, configStore)
+    startCarousel(usageStore, configStore as any)
 
     // 轮播不启动，即使过了很长时间也不切换
     vi.advanceTimersByTime(30_000)

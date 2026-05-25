@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from 'vitest'
 import type { ProviderAdapter, ProviderRegistry } from '@/providers/types'
 import { createProviderRegistry } from '@/providers/registry'
-import type { ProviderConfig, UsageInfo, UsageMetric } from '@/types/data-model'
+import type { ProviderConfig, UsageInfo } from '@/types/data-model'
 
 // ============================================================
 // 测试用 Mock 适配器
@@ -11,7 +11,7 @@ function createMockAdapter(id: string): ProviderAdapter {
     id: id as any,
     name: `Mock ${id}`,
     authType: 'apikey',
-    async fetchUsage(config: ProviderConfig): Promise<UsageInfo> {
+    async fetchUsage(_config: ProviderConfig): Promise<UsageInfo> {
       return {
         providerId: id as any,
         timestamp: Date.now(),
@@ -127,7 +127,7 @@ describe('ProviderRegistry', () => {
   })
 
   it('should return undefined for unknown provider', () => {
-    const found = registry.get('unknown')
+    const found = registry.get('unknown' as any)
     expect(found).toBeUndefined()
   })
 
