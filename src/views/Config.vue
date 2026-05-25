@@ -120,7 +120,7 @@ function updateApiKey(id: ProviderId, key: string): void {
 
 // OAuth 回调 URL 映射（按供应商配置）
 const OAUTH_URLS: Record<string, string> = {
-  zhipu: 'https://open.bigmodel.cn/user/api/paas/token',
+  zhipu: 'https://open.bigmodel.cn/usercenter/apikeys',
   volcengine: 'https://console.volcengine.com/iam/keymanage',
 }
 
