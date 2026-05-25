@@ -12,12 +12,6 @@ vi.mock('@tauri-apps/api/event', () => ({
   listen: (...args: unknown[]) => mockListen(...args),
 }))
 
-// Mock @tauri-apps/plugin-shell
-const mockOpen = vi.fn()
-vi.mock('@tauri-apps/plugin-shell', () => ({
-  open: (...args: unknown[]) => mockOpen(...args),
-}))
-
 import {
   startOAuth,
   stopOAuth,
@@ -83,14 +77,16 @@ describe('OAuth Service', () => {
   })
 
   describe('openOAuthUrl', () => {
-    it('should call shell open with the URL', async () => {
-      mockOpen.mockResolvedValue(undefined)
+    it('should call invoke with open_url_in_browser command and URL', async () => {
+      mockInvoke.mockResolvedValue(undefined)
       await openOAuthUrl('https://auth.zhipu.ai/oauth/authorize?client_id=xxx')
-      expect(mockOpen).toHaveBeenCalledWith('https://auth.zhipu.ai/oauth/authorize?client_id=xxx')
+      expect(mockInvoke).toHaveBeenCalledWith('open_url_in_browser', {
+        url: 'https://auth.zhipu.ai/oauth/authorize?client_id=xxx',
+      })
     })
 
-    it('should propagate errors from shell open', async () => {
-      mockOpen.mockRejectedValue(new Error('failed to open browser'))
+    it('should propagate errors from invoke', async () => {
+      mockInvoke.mockRejectedValue(new Error('failed to open browser'))
       await expect(openOAuthUrl('https://auth.example.com')).rejects.toThrow('failed to open browser')
     })
   })

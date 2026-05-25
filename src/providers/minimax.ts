@@ -1,6 +1,22 @@
 import type { ProviderConfig, UsageInfo, UsageMetric } from '@/types/data-model'
 import type { ProviderAdapter } from './types'
 
+interface MiniMaxResponse {
+  model_remains?: MiniMaxRemain[]
+  base_resp?: {
+    status_code?: number
+    status_msg?: string
+  }
+}
+
+interface MiniMaxRemain {
+  model_name?: string
+  current_interval_total_count?: number
+  current_interval_usage_count?: number
+  current_weekly_total_count?: number
+  current_weekly_usage_count?: number
+}
+
 /**
  * MiniMax TokenPlan 适配器
  * 通过 REST API 获取文本生成和图像生成的额度数据
@@ -48,8 +64,16 @@ export class MiniMaxAdapter implements ProviderAdapter {
     }
   }
 
-  private parseResponse(data: { data?: { plan_info_list?: Array<{ model_name?: string; five_hours_total?: number; five_hours_remaining?: number; weekly_total?: number; weekly_remaining?: number }> } }): UsageInfo {
-    const planList = data?.data?.plan_info_list
+  private parseResponse(data: MiniMaxResponse): UsageInfo {
+    const statusCode = data?.base_resp?.status_code
+    if (statusCode && statusCode !== 0) {
+      if (statusCode === 1004) {
+        return this.errorResult('API Key 无效或已过期')
+      }
+      return this.errorResult(data.base_resp?.status_msg || `请求失败: ${statusCode}`)
+    }
+
+    const planList = data?.model_remains
     if (!Array.isArray(planList)) {
       return this.errorResult('API 响应格式异常')
     }
@@ -66,46 +90,43 @@ export class MiniMaxAdapter implements ProviderAdapter {
 
     // Use first text plan for text metrics
     if (textPlans.length > 0) {
-      const tp = textPlans[0]
-      metrics.push(
-        this.createMetric(
-          '文本 5h 额度',
-          tp.five_hours_total - tp.five_hours_remaining,
-          tp.five_hours_total,
-        ),
-      )
-      metrics.push(
-        this.createMetric(
-          '文本周额度',
-          tp.weekly_total - tp.weekly_remaining,
-          tp.weekly_total,
-        ),
-      )
+      this.addPlanMetrics(metrics, textPlans[0], '文本')
     }
 
     // Use first image plan for image metrics
     if (imagePlans.length > 0) {
-      const ip = imagePlans[0]
-      metrics.push(
-        this.createMetric(
-          '图像 5h 额度',
-          ip.five_hours_total - ip.five_hours_remaining,
-          ip.five_hours_total,
-        ),
-      )
-      metrics.push(
-        this.createMetric(
-          '图像周额度',
-          ip.weekly_total - ip.weekly_remaining,
-          ip.weekly_total,
-        ),
-      )
+      this.addPlanMetrics(metrics, imagePlans[0], '图像')
     }
 
     return {
       providerId: 'minimax',
       timestamp: Date.now(),
       metrics,
+    }
+  }
+
+  private addPlanMetrics(
+    metrics: UsageMetric[],
+    plan: MiniMaxRemain,
+    labelPrefix: '文本' | '图像',
+  ): void {
+    metrics.push(
+      this.createMetric(
+        `${labelPrefix} 5h 额度`,
+        plan.current_interval_usage_count ?? 0,
+        plan.current_interval_total_count ?? 0,
+      ),
+    )
+
+    const weeklyTotal = plan.current_weekly_total_count ?? 0
+    if (weeklyTotal > 0) {
+      metrics.push(
+        this.createMetric(
+          `${labelPrefix}周额度`,
+          plan.current_weekly_usage_count ?? 0,
+          weeklyTotal,
+        ),
+      )
     }
   }
 

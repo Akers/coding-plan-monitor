@@ -29,6 +29,11 @@ vi.mock('@tauri-apps/api/event', () => ({
   emit: vi.fn(),
 }))
 
+const mockClose = vi.fn()
+vi.mock('@tauri-apps/api/window', () => ({
+  getCurrentWindow: () => ({ close: mockClose }),
+}))
+
 describe('Config', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -113,6 +118,7 @@ describe('Config', () => {
     // cancelChanges should reset dirty to false
     const saveBtn = wrapper.find('.btn-save')
     expect((saveBtn.element as HTMLButtonElement).disabled).toBe(true)
+    expect(mockClose).toHaveBeenCalledTimes(1)
   })
 
   it('onMounted calls loadConfig', async () => {
